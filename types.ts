@@ -15,6 +15,9 @@ export interface TextElement extends BaseElement {
     type: 'text';
     text: string;
     fontSize: number;
+    fontFamily: string;
+    isBold: boolean;
+    isItalic: boolean;
 }
 
 export interface SignatureElement extends BaseElement {

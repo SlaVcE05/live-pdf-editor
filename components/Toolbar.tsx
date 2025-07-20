@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { EditableElement, TextElement, ToolType } from '../types';
-import { PointerIcon, TextIcon, SignatureIcon, TrashIcon, UploadIcon, DownloadIcon } from './icons';
+import { PointerIcon, TextIcon, SignatureIcon, TrashIcon, UploadIcon, DownloadIcon, BoldIcon, ItalicIcon } from './icons';
 
 interface ToolbarProps {
     currentTool: ToolType;
@@ -76,15 +76,51 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
                     <div className="mt-6 pt-6 border-t border-gray-200">
                         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Element Properties</h2>
                         {selectedElement.type === 'text' && (
-                             <div className="flex flex-col gap-2">
-                                <label htmlFor="fontSize" className="text-sm text-gray-600">Font Size (px)</label>
-                                <input
-                                    id="fontSize"
-                                    type="number"
-                                    value={(selectedElement as TextElement).fontSize}
-                                    onChange={(e) => props.handleElementUpdate(selectedElement.id, { fontSize: parseInt(e.target.value, 10) || 1 })}
-                                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
+                             <div className="flex flex-col gap-4">
+                                <div>
+                                    <label htmlFor="fontFamily" className="text-sm text-gray-600">Font Family</label>
+                                    <select
+                                        id="fontFamily"
+                                        value={(selectedElement as TextElement).fontFamily}
+                                        onChange={(e) => props.handleElementUpdate(selectedElement.id, { fontFamily: e.target.value })}
+                                        className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Courier">Courier</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-sm text-gray-600">Font Size & Style</label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <input
+                                            id="fontSize"
+                                            type="number"
+                                            value={(selectedElement as TextElement).fontSize}
+                                            onChange={(e) => props.handleElementUpdate(selectedElement.id, { fontSize: parseInt(e.target.value, 10) || 1 })}
+                                            className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            aria-label="Font Size"
+                                        />
+                                        <button
+                                            onClick={() => props.handleElementUpdate(selectedElement.id, { isBold: !(selectedElement as TextElement).isBold })}
+                                            className={`p-2 rounded-md border transition-colors ${(selectedElement as TextElement).isBold ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-100 border-gray-300'}`}
+                                            title="Bold"
+                                            aria-pressed={(selectedElement as TextElement).isBold}
+                                        >
+                                            <BoldIcon className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => props.handleElementUpdate(selectedElement.id, { isItalic: !(selectedElement as TextElement).isItalic })}
+                                            className={`p-2 rounded-md border transition-colors ${(selectedElement as TextElement).isItalic ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-100 border-gray-300'}`}
+                                            title="Italic"
+                                            aria-pressed={(selectedElement as TextElement).isItalic}
+                                        >
+                                            <ItalicIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
                              </div>
                         )}
                         <button onClick={props.deleteSelectedElement} className="w-full mt-4 flex items-center justify-center gap-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
@@ -101,7 +137,7 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
                     {props.isLoading ? 'Exporting...' : 'Export as PDF'}
                 </button>
                 <button onClick={props.resetApp} className="w-full p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                    Load New PDF
+                    Load New File
                 </button>
             </div>
         </aside>

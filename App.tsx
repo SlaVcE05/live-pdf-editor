@@ -1,28 +1,30 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { EditableElement, PageInfo, ToolType, TextElement, SignatureElement } from './types';
-import { loadPdfPages, savePdf, createPdfFromDoc } from './services/pdfHelper';
-import { loadDocxPages } from './services/docHelper';
+import { loadPdfPages, savePdf } from './services/pdfHelper';
+import { convertDocxToPdfBytes } from './services/docHelper';
 import FileUploader from './components/FileUploader';
 import Editor from './components/Editor';
 import { nanoid } from 'nanoid';
 
-const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica, Arial, sans-serif') => {
+const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica', isBold = false, isItalic = false) => {
     // This function is duplicated in CanvasView.tsx. For a real app, it would be in a shared utils file.
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (context) {
-        context.font = `${fontSize}px ${font}`;
+        const fontStyle = isItalic ? 'italic' : 'normal';
+        const fontWeight = isBold ? 'bold' : 'normal';
+        context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${font}`;
         return context.measureText(text).width;
     }
     // Fallback for environments where canvas is not available.
-    return text.length * fontSize * 0.6;
+    const boldMultiplier = isBold ? 1.15 : 1;
+    return text.length * fontSize * 0.6 * boldMultiplier;
 };
 
 const App: React.FC = () => {
     const [documentFile, setDocumentFile] = useState<File | null>(null);
-    const [pdfOriginalBytes, setPdfOriginalBytes] = useState<ArrayBuffer | null>(null);
-    const [documentType, setDocumentType] = useState<'pdf' | 'doc' | null>(null);
+    const [pdfOriginalBytes, setPdfOriginalBytes] = useState<Uint8Array | null>(null);
     const [pages, setPages] = useState<PageInfo[]>([]);
     const [elements, setElements] = useState<EditableElement[]>([]);
     const [currentTool, setCurrentTool] = useState<ToolType>('select');
@@ -49,18 +51,20 @@ const App: React.FC = () => {
                 
                 try {
                     let loadedPages: PageInfo[] = [];
+                    let pdfBytesForEditing: ArrayBuffer;
+
                     if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
-                        setDocumentType('pdf');
-                        setPdfOriginalBytes(bytes);
-                        const bufferForRendering = bytes.slice(0);
-                        loadedPages = await loadPdfPages(bufferForRendering);
+                        pdfBytesForEditing = bytes;
                     } else if (fileName.endsWith('.docx') || fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                        setDocumentType('doc');
-                        setPdfOriginalBytes(null);
-                        loadedPages = await loadDocxPages(bytes);
+                        const convertedPdfBytes = await convertDocxToPdfBytes(bytes);
+                        pdfBytesForEditing = convertedPdfBytes.buffer;
                     } else {
                          throw new Error(`Unsupported file type: ${fileType} for file ${fileName}`);
                     }
+
+                    setPdfOriginalBytes(new Uint8Array(pdfBytesForEditing));
+                    const bufferForRendering = pdfBytesForEditing.slice(0);
+                    loadedPages = await loadPdfPages(bufferForRendering);
 
                     if (loadedPages.length === 0) {
                         alert("The selected document has no pages or could not be processed.");
@@ -96,7 +100,6 @@ const App: React.FC = () => {
         setSelectedElementId(null);
         setSignatureImage(null);
         setIsLoading(false);
-        setDocumentType(null);
     };
 
     const handleElementUpdate = (id: string, updates: Partial<EditableElement>) => {
@@ -108,7 +111,10 @@ const App: React.FC = () => {
         if (currentTool === 'text') {
             const defaultText = 'New Text';
             const fontSize = 16;
-            const initialWidth = measureTextWidth(defaultText, fontSize) + 20; // Add padding
+            const fontFamily = 'Helvetica';
+            const isBold = false;
+            const isItalic = false;
+            const initialWidth = measureTextWidth(defaultText, fontSize, fontFamily, isBold, isItalic) + 20;
 
             const textElement: TextElement = {
                 id: nanoid(),
@@ -119,6 +125,9 @@ const App: React.FC = () => {
                 height: 24,
                 text: defaultText,
                 fontSize: fontSize,
+                fontFamily: fontFamily,
+                isBold: isBold,
+                isItalic: isItalic,
                 pageIndex: currentPageIndex
             };
             newElement = textElement;
@@ -151,17 +160,10 @@ const App: React.FC = () => {
     };
 
     const handleExport = async () => {
-        if (pages.length === 0) return;
+        if (pages.length === 0 || !pdfOriginalBytes) return;
         setIsLoading(true);
         try {
-            let pdfBytes: Uint8Array;
-            if (documentType === 'pdf' && pdfOriginalBytes) {
-                pdfBytes = await savePdf(pdfOriginalBytes, elements, pages);
-            } else if (documentType === 'doc') {
-                pdfBytes = await createPdfFromDoc(elements, pages);
-            } else {
-                throw new Error("Cannot export: Unknown document type or missing data.");
-            }
+            const pdfBytes = await savePdf(pdfOriginalBytes, elements, pages);
             
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');

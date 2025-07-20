@@ -1,16 +1,20 @@
+
 import React, { useEffect, useRef } from 'react';
 import { EditableElement, PageInfo, TextElement, ToolType } from '../types';
 
-const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica, Arial, sans-serif') => {
+const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica', isBold = false, isItalic = false) => {
     // This function is duplicated in App.tsx. For a real app, it would be in a shared utils file.
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (context) {
-        context.font = `${fontSize}px ${font}`;
+        const fontStyle = isItalic ? 'italic' : 'normal';
+        const fontWeight = isBold ? 'bold' : 'normal';
+        context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${font}`;
         return context.measureText(text).width;
     }
     // Fallback for environments where canvas is not available.
-    return text.length * fontSize * 0.6;
+    const boldMultiplier = isBold ? 1.15 : 1;
+    return text.length * fontSize * 0.6 * boldMultiplier;
 };
 
 interface CanvasViewProps {
@@ -99,7 +103,7 @@ const CanvasView: React.FC<CanvasViewProps> = ({ page, elements, addElement, set
         const lines = newText.split('\n');
         const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
         // Use the width of a space if the line is empty to prevent collapse
-        const newWidth = measureTextWidth(longestLine || ' ', element.fontSize) + 20; // Add some padding
+        const newWidth = measureTextWidth(longestLine || ' ', element.fontSize, element.fontFamily, element.isBold, element.isItalic) + 20; // Add some padding
         handleElementUpdate(element.id, { text: newText, width: newWidth });
     };
 
@@ -152,7 +156,9 @@ const CanvasView: React.FC<CanvasViewProps> = ({ page, elements, addElement, set
                                 resize: 'none',
                                 width: '100%',
                                 height: '100%',
-                                fontFamily: 'Helvetica, Arial, sans-serif',
+                                fontFamily: (element as TextElement).fontFamily,
+                                fontWeight: (element as TextElement).isBold ? 'bold' : 'normal',
+                                fontStyle: (element as TextElement).isItalic ? 'italic' : 'normal',
                                 lineHeight: 1.2,
                                 cursor: 'text',
                                 userSelect: 'text',
