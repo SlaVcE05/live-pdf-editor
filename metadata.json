@@ -1,5 +1,6 @@
 {
   "name": "Live PDF Editor",
   "description": "An interactive web application to edit PDF documents directly in your browser. Upload a PDF, add text, place signatures, and export your changes with ease.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "prompt": ""
 }

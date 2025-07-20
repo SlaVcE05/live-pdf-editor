@@ -9,14 +9,30 @@ interface FileUploaderProps {
 
 const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isLoading }) => {
     const inputRef = useRef<HTMLInputElement>(null);
+    
+    const handleFileValidation = (file: File | undefined) => {
+        if (!file) return;
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file && file.type === "application/pdf") {
+        const fileName = file.name.toLowerCase();
+        if (fileName.endsWith('.doc')) {
+            alert("Legacy .doc files are not supported. Please convert the file to .docx and try again.");
+            if (inputRef.current) inputRef.current.value = ""; // Reset file input
+            return;
+        }
+
+        const isDocx = fileName.endsWith('.docx') || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const isPdf = fileName.endsWith('.pdf') || file.type === "application/pdf";
+
+        if (isDocx || isPdf) {
             onFileSelect(file);
         } else {
-            alert("Please select a valid PDF file.");
+            alert("Please select a valid PDF or Word (.docx) file.");
+            if (inputRef.current) inputRef.current.value = ""; // Reset file input
         }
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        handleFileValidation(event.target.files?.[0]);
     };
 
     const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -25,12 +41,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isLoading }) 
 
     const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
-        const file = event.dataTransfer.files?.[0];
-        if (file && file.type === "application/pdf") {
-            onFileSelect(file);
-        } else {
-            alert("Please select a valid PDF file.");
-        }
+        handleFileValidation(event.dataTransfer.files?.[0]);
     };
     
     const handleClick = () => {
@@ -41,7 +52,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isLoading }) 
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
             <div className="w-full max-w-lg p-8 space-y-8 bg-white rounded-2xl shadow-lg text-center">
                 <h1 className="text-3xl font-bold text-gray-800">Live Document Editor</h1>
-                <p className="text-gray-500">Upload a PDF to start editing. Add text, signatures, and more.</p>
+                <p className="text-gray-500">Upload a PDF or Word (.docx) document to start editing.</p>
                 
                 <div 
                     className="flex flex-col items-center justify-center w-full p-10 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
@@ -57,18 +68,19 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isLoading }) 
                     ) : (
                         <>
                             <UploadCloudIcon className="w-12 h-12 text-gray-400 mb-4" />
-                            <p className="text-lg font-semibold text-gray-700">Drag & drop your PDF here</p>
+                            <p className="text-lg font-semibold text-gray-700">Drag & drop your file here</p>
                             <p className="text-gray-500">or click to browse files</p>
                             <input
                                 type="file"
                                 ref={inputRef}
                                 onChange={handleFileChange}
-                                accept="application/pdf"
+                                accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
                                 className="hidden"
                             />
                         </>
                     )}
                 </div>
+                 <p className="text-xs text-gray-400">Supported formats: PDF, DOCX</p>
             </div>
         </div>
     );

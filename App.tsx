@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { EditableElement, PageInfo, ToolType, TextElement, SignatureElement } from './types';
-import { loadPdfPages, savePdf } from './services/pdfHelper';
+import { loadPdfPages, savePdf, createPdfFromDoc } from './services/pdfHelper';
+import { loadDocxPages } from './services/docHelper';
 import FileUploader from './components/FileUploader';
 import Editor from './components/Editor';
 import { nanoid } from 'nanoid';
@@ -18,8 +20,9 @@ const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica, Ari
 };
 
 const App: React.FC = () => {
-    const [pdfFile, setPdfFile] = useState<File | null>(null);
+    const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [pdfOriginalBytes, setPdfOriginalBytes] = useState<ArrayBuffer | null>(null);
+    const [documentType, setDocumentType] = useState<'pdf' | 'doc' | null>(null);
     const [pages, setPages] = useState<PageInfo[]>([]);
     const [elements, setElements] = useState<EditableElement[]>([]);
     const [currentTool, setCurrentTool] = useState<ToolType>('select');
@@ -33,29 +36,41 @@ const App: React.FC = () => {
 
 
     const handleFileChange = (file: File) => {
+        resetState();
         setIsLoading(true);
-        setPdfFile(file);
+        setDocumentFile(file);
+        
         const reader = new FileReader();
         reader.onload = async (e) => {
             if (e.target?.result) {
                 const bytes = e.target.result as ArrayBuffer;
-                setPdfOriginalBytes(bytes);
+                const fileName = file.name.toLowerCase();
+                const fileType = file.type;
+                
                 try {
-                    // Create a copy of the buffer for pdf.js to prevent it from detaching the original ArrayBuffer.
-                    // The original buffer in `pdfOriginalBytes` is needed by pdf-lib for saving.
-                    const bufferForRendering = bytes.slice(0);
-                    const loadedPages = await loadPdfPages(bufferForRendering);
+                    let loadedPages: PageInfo[] = [];
+                    if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
+                        setDocumentType('pdf');
+                        setPdfOriginalBytes(bytes);
+                        const bufferForRendering = bytes.slice(0);
+                        loadedPages = await loadPdfPages(bufferForRendering);
+                    } else if (fileName.endsWith('.docx') || fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                        setDocumentType('doc');
+                        setPdfOriginalBytes(null);
+                        loadedPages = await loadDocxPages(bytes);
+                    } else {
+                         throw new Error(`Unsupported file type: ${fileType} for file ${fileName}`);
+                    }
+
                     if (loadedPages.length === 0) {
-                        alert("The selected PDF has no pages or could not be processed.");
+                        alert("The selected document has no pages or could not be processed.");
                         resetState();
                         return;
                     }
                     setPages(loadedPages);
-                    setElements([]);
-                    setCurrentPageIndex(0);
                 } catch (error) {
-                    console.error("Failed to load PDF pages:", error);
-                    alert("Error: Could not load the PDF file. It might be corrupted or in an unsupported format.");
+                    console.error("Failed to load document:", error);
+                    alert("Error: Could not load the file. It might be corrupted or in an unsupported format.");
                     resetState();
                 } finally {
                     setIsLoading(false);
@@ -73,7 +88,7 @@ const App: React.FC = () => {
     };
 
     const resetState = () => {
-        setPdfFile(null);
+        setDocumentFile(null);
         setPdfOriginalBytes(null);
         setPages([]);
         setElements([]);
@@ -81,6 +96,7 @@ const App: React.FC = () => {
         setSelectedElementId(null);
         setSignatureImage(null);
         setIsLoading(false);
+        setDocumentType(null);
     };
 
     const handleElementUpdate = (id: string, updates: Partial<EditableElement>) => {
@@ -135,14 +151,22 @@ const App: React.FC = () => {
     };
 
     const handleExport = async () => {
-        if (!pdfOriginalBytes || pages.length === 0) return;
+        if (pages.length === 0) return;
         setIsLoading(true);
         try {
-            const pdfBytes = await savePdf(pdfOriginalBytes, elements, pages);
+            let pdfBytes: Uint8Array;
+            if (documentType === 'pdf' && pdfOriginalBytes) {
+                pdfBytes = await savePdf(pdfOriginalBytes, elements, pages);
+            } else if (documentType === 'doc') {
+                pdfBytes = await createPdfFromDoc(elements, pages);
+            } else {
+                throw new Error("Cannot export: Unknown document type or missing data.");
+            }
+            
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `edited_${pdfFile?.name || 'document.pdf'}`;
+            link.download = `edited_${documentFile?.name.replace(/\.\w+$/, '.pdf') || 'document.pdf'}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -246,11 +270,11 @@ const App: React.FC = () => {
     }, [draggingElement, resizingElement, handleMouseMove, handleMouseUp]);
     
 
-    if (!pdfFile) {
+    if (!documentFile) {
         return <FileUploader onFileSelect={handleFileChange} isLoading={isLoading} />;
     }
 
-    if (pages.length === 0) {
+    if (isLoading || pages.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="flex flex-col items-center gap-4">

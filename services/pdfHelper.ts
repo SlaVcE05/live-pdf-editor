@@ -1,4 +1,3 @@
-
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { EditableElement, PageInfo, TextElement, SignatureElement } from '../types';
 
@@ -49,16 +48,22 @@ export const savePdf = async (
         const scaleY = pdfPageHeight / pageInfo.height;
 
         for (const element of pageElements) {
-            const y = page.getHeight() - (element.y * scaleY) - (element.height * scaleY);
-            
+            const y_top_pdf = page.getHeight() - (element.y * scaleY);
+
             if (element.type === 'text') {
                 const textElement = element as TextElement;
-                page.drawText(textElement.text, {
-                    x: element.x * scaleX,
-                    y: y + (element.height * scaleY / 2) - (textElement.fontSize * scaleY / 2) + 2, // Approximate vertical centering
-                    font,
-                    size: textElement.fontSize * scaleY,
-                    color: rgb(0, 0, 0),
+                const lines = textElement.text.split('\n');
+                const fontSize = textElement.fontSize * scaleY;
+                const lineHeight = fontSize * 1.2;
+                
+                lines.forEach((line, lineIndex) => {
+                     page.drawText(line, {
+                        x: element.x * scaleX,
+                        y: y_top_pdf - fontSize - (lineIndex * lineHeight),
+                        font,
+                        size: fontSize,
+                        color: rgb(0, 0, 0),
+                    });
                 });
             } else if (element.type === 'signature') {
                 const signatureElement = element as SignatureElement;
@@ -66,9 +71,68 @@ export const savePdf = async (
                 const image = await pdfDoc.embedPng(imageBytes);
                 page.drawImage(image, {
                     x: element.x * scaleX,
-                    y: y,
+                    y: y_top_pdf - (element.height * scaleY),
                     width: element.width * scaleX,
                     height: element.height * scaleY,
+                });
+            }
+        }
+    }
+
+    return await pdfDoc.save();
+};
+
+export const createPdfFromDoc = async (
+    elements: EditableElement[],
+    pagesInfo: PageInfo[]
+): Promise<Uint8Array> => {
+    const pdfDoc = await PDFLib.PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    for (let i = 0; i < pagesInfo.length; i++) {
+        const pageInfo = pagesInfo[i];
+        const page = pdfDoc.addPage([pageInfo.width, pageInfo.height]);
+        const pageElements = elements.filter(el => el.pageIndex === i);
+        
+        const pageImageBytes = await fetch(pageInfo.dataUrl).then(res => res.arrayBuffer());
+        const pageImage = pageInfo.dataUrl.includes('jpeg') 
+            ? await pdfDoc.embedJpg(pageImageBytes) 
+            : await pdfDoc.embedPng(pageImageBytes);
+
+        page.drawImage(pageImage, {
+            x: 0, y: 0,
+            width: page.getWidth(), height: page.getHeight(),
+        });
+        
+        const { height: pdfPageHeight } = page.getSize();
+
+        for (const element of pageElements) {
+            const y_top_pdf = pdfPageHeight - element.y;
+
+            if (element.type === 'text') {
+                const textElement = element as TextElement;
+                const lines = textElement.text.split('\n');
+                const fontSize = textElement.fontSize;
+                const lineHeight = fontSize * 1.2;
+
+                lines.forEach((line, lineIndex) => {
+                    page.drawText(line, {
+                        x: element.x,
+                        y: y_top_pdf - fontSize - (lineIndex * lineHeight),
+                        font,
+                        size: fontSize,
+                        color: rgb(0, 0, 0),
+                    });
+                });
+            } else if (element.type === 'signature') {
+                const signatureElement = element as SignatureElement;
+                const imageBytes = await fetch(signatureElement.imageData).then(res => res.arrayBuffer());
+                const image = await pdfDoc.embedPng(imageBytes);
+                page.drawImage(image, {
+                    x: element.x,
+                    y: y_top_pdf - element.height,
+                    width: element.width,
+                    height: element.height,
                 });
             }
         }

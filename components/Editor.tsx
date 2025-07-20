@@ -28,7 +28,7 @@ const Editor: React.FC<EditorProps> = (props) => {
     return (
         <div className="flex h-screen w-screen bg-gray-200 font-sans">
             <Toolbar {...props} />
-            <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-auto">
+            <main className="flex-1 flex flex-col items-center justify-start p-4 overflow-auto">
                 <CanvasView
                     page={props.pages[props.currentPageIndex]}
                     elements={props.elements.filter(el => el.pageIndex === props.currentPageIndex)}
