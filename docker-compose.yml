@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:80"
+    volumes:
+      - ./metadata.json:/usr/share/nginx/html/metadata.json
+    restart: unless-stopped
