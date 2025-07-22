@@ -54,8 +54,16 @@ const CanvasView: React.FC<CanvasViewProps> = ({ page, elements, addElement, set
     useEffect(() => {
         if (focusedElementRef.current && document.activeElement !== focusedElementRef.current) {
             focusedElementRef.current.focus();
-            const len = focusedElementRef.current.value.length;
-            focusedElementRef.current.setSelectionRange(len, len);
+            const text = focusedElementRef.current.value;
+
+            // When a new text element is created with the default text, select it all
+            // so the user can immediately type to replace it.
+            if (text === 'New Text') {
+                focusedElementRef.current.select();
+            } else {
+                const len = text.length;
+                focusedElementRef.current.setSelectionRange(len, len);
+            }
         }
     }, [selectedElementId]);
     
