@@ -1,31 +1,66 @@
-
-import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFFont, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import { EditableElement, PageInfo, TextElement, SignatureElement } from '../types';
 
 declare const pdfjsLib: any;
-declare const PDFLib: any;
 
-const getPdfFont = async (pdfDoc: any, fontFamily: string, isBold: boolean, isItalic: boolean): Promise<PDFFont> => {
-    let font = StandardFonts.Helvetica;
+// Caching for fetched fonts to avoid re-downloading on every export.
+const fontCache: { [key: string]: { promise: Promise<ArrayBuffer>, bytes: ArrayBuffer | null } } = {};
 
-    if (fontFamily === 'Times New Roman') {
-        if (isBold && isItalic) font = StandardFonts.TimesRomanBoldItalic;
-        else if (isBold) font = StandardFonts.TimesRomanBold;
-        else if (isItalic) font = StandardFonts.TimesRomanItalic;
-        else font = StandardFonts.TimesRoman;
-    } else if (fontFamily === 'Courier') {
-        if (isBold && isItalic) font = StandardFonts.CourierBoldOblique;
-        else if (isBold) font = StandardFonts.CourierBold;
-        else if (isItalic) font = StandardFonts.CourierOblique;
-        else font = StandardFonts.Courier;
-    } else { // Default to Helvetica for Arial, Verdana, etc.
-        if (isBold && isItalic) font = StandardFonts.HelveticaBoldOblique;
-        else if (isBold) font = StandardFonts.HelveticaBold;
-        else if (isItalic) font = StandardFonts.HelveticaOblique;
-        else font = StandardFonts.Helvetica;
+const getFontBytes = async (style: 'regular' | 'bold' | 'italic' | 'bold-italic'): Promise<ArrayBuffer> => {
+    if (fontCache[style]?.bytes) {
+        return fontCache[style].bytes!;
     }
 
-    return await pdfDoc.embedFont(font);
+    if (fontCache[style]?.promise) {
+        return fontCache[style].promise;
+    }
+
+    const styleToUrlMap = {
+        'regular': 'https://pdf-lib.js.org/assets/ubuntu/Ubuntu-R.ttf',
+        'bold': 'https://pdf-lib.js.org/assets/ubuntu/Ubuntu-B.ttf',
+        'italic': 'https://pdf-lib.js.org/assets/ubuntu/Ubuntu-I.ttf',
+        'bold-italic': 'https://pdf-lib.js.org/assets/ubuntu/Ubuntu-BI.ttf',
+    };
+
+    const fontUrl = styleToUrlMap[style];
+    const promise = fetch(fontUrl).then(res => {
+        if (!res.ok) {
+            throw new Error(`Failed to fetch font: ${res.statusText}`);
+        }
+        return res.arrayBuffer()
+    });
+    fontCache[style] = { promise, bytes: null };
+    
+    try {
+        const bytes = await promise;
+        fontCache[style].bytes = bytes;
+        return bytes;
+    } catch(e) {
+        // If fetch fails, remove from cache to allow retry on next attempt
+        delete fontCache[style];
+        throw e;
+    }
+};
+
+const getPdfFont = async (pdfDoc: PDFDocument, fontFamily: string, isBold: boolean, isItalic: boolean): Promise<PDFFont> => {
+    let style: 'regular' | 'bold' | 'italic' | 'bold-italic' = 'regular';
+    if (isBold && isItalic) {
+        style = 'bold-italic';
+    } else if (isBold) {
+        style = 'bold';
+    } else if (isItalic) {
+        style = 'italic';
+    }
+    
+    // We embed the Ubuntu font family to support a wide range of Unicode characters,
+    // which fixes errors with non-Latin scripts (e.g., Cyrillic). The user's font
+    // family selection is visually approximated by using this single, versatile font.
+    const fontBytes = await getFontBytes(style);
+
+    // With fontkit registered, pdf-lib will automatically create a subset of the font
+    // containing only the glyphs used in the document. This optimizes file size.
+    return await pdfDoc.embedFont(fontBytes);
 };
 
 
@@ -59,7 +94,13 @@ export const savePdf = async (
     elements: EditableElement[],
     pagesInfo: PageInfo[]
 ): Promise<Uint8Array> => {
-    const pdfDoc = await PDFLib.PDFDocument.load(originalPdfBytes);
+    const pdfDoc = await PDFDocument.load(originalPdfBytes);
+
+    // Register fontkit with this PDFDocument instance.
+    // This is necessary to embed custom fonts like Ubuntu for Unicode support.
+    // We cast to `any` because the type definitions might not include `registerFontkit`.
+    (pdfDoc as any).registerFontkit(fontkit);
+
     const pages = pdfDoc.getPages();
 
     for (let i = 0; i < pages.length; i++) {

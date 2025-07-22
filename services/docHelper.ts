@@ -1,9 +1,9 @@
 
 import { PageInfo } from '../types';
+import { PDFDocument } from 'pdf-lib';
 
 declare const mammoth: any;
 declare const html2canvas: any;
-declare const PDFLib: any;
 
 const RENDER_WIDTH = 794;
 const RENDER_HEIGHT = 1123;
@@ -75,7 +75,7 @@ const renderDocxToPages = async (docxBytes: ArrayBuffer): Promise<PageInfo[]> =>
 
 export const convertDocxToPdfBytes = async (docxBytes: ArrayBuffer): Promise<Uint8Array> => {
     const docPages = await renderDocxToPages(docxBytes);
-    const pdfDoc = await PDFLib.PDFDocument.create();
+    const pdfDoc = await PDFDocument.create();
 
     for (const pageInfo of docPages) {
         const page = pdfDoc.addPage([pageInfo.width, pageInfo.height]);
