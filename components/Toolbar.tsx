@@ -1,4 +1,5 @@
 
+
 import React, { useRef } from 'react';
 import { EditableElement, TextElement, ToolType } from '../types';
 import { PointerIcon, TextIcon, SignatureIcon, TrashIcon, UploadIcon, DownloadIcon, BoldIcon, ItalicIcon } from './icons';
@@ -35,6 +36,14 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
         }
     };
 
+    const handleSignatureAction = () => {
+        if (props.signatureImage) {
+            props.setCurrentTool('signature');
+        } else {
+            signatureInputRef.current?.click();
+        }
+    };
+
     const ToolButton = ({ tool, icon, children }: { tool: ToolType; icon: React.ReactNode, children: React.ReactNode }) => (
         <button
             onClick={() => props.setCurrentTool(tool)}
@@ -58,7 +67,7 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
                 
                 <div className="flex flex-col gap-2">
                      <button
-                        onClick={() => signatureInputRef.current?.click()}
+                        onClick={handleSignatureAction}
                         className={`flex items-center gap-3 w-full p-3 rounded-lg text-left transition-colors ${props.currentTool === 'signature' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
                     >
                         {props.signatureImage ? <SignatureIcon className="w-5 h-5" /> : <UploadIcon className="w-5 h-5" />}
@@ -66,7 +75,11 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
                     </button>
                     <input type="file" accept="image/png, image/jpeg" ref={signatureInputRef} onChange={handleSignatureUpload} className="hidden" />
                     {props.signatureImage && (
-                        <div className="p-2 border border-gray-200 rounded-lg bg-gray-50">
+                        <div 
+                            className="p-2 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => props.setCurrentTool('signature')}
+                            title="Click to place signature"
+                        >
                             <img src={props.signatureImage} alt="Signature preview" className="max-w-full h-auto rounded"/>
                         </div>
                     )}

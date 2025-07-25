@@ -152,12 +152,12 @@ const App: React.FC = () => {
         }
     };
     
-    const deleteSelectedElement = () => {
+    const deleteSelectedElement = useCallback(() => {
         if (selectedElementId) {
             setElements(prev => prev.filter(el => el.id !== selectedElementId));
             setSelectedElementId(null);
         }
-    };
+    }, [selectedElementId]);
 
     const handleExport = async () => {
         if (pages.length === 0 || !pdfOriginalBytes) return;
@@ -271,6 +271,26 @@ const App: React.FC = () => {
         };
     }, [draggingElement, resizingElement, handleMouseMove, handleMouseUp]);
     
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Do not trigger if an input or textarea is focused.
+            const target = e.target as HTMLElement;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+                return;
+            }
+
+            if (selectedElementId && (e.key === 'Delete' || e.key === 'Backspace')) {
+                e.preventDefault(); // Prevent browser back navigation on backspace
+                deleteSelectedElement();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [selectedElementId, deleteSelectedElement]);
 
     if (!documentFile) {
         return <FileUploader onFileSelect={handleFileChange} isLoading={isLoading} />;
