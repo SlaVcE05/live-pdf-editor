@@ -294,6 +294,17 @@ const App: React.FC = () => {
             if (selectedElementId && (e.key === 'Delete' || e.key === 'Backspace')) {
                 e.preventDefault(); // Prevent browser back navigation on backspace
                 deleteSelectedElement();
+            } else {
+                switch (e.key.toLowerCase()) {
+                    case 't':
+                        setCurrentTool('text');
+                        break;
+                    case 's':
+                        setCurrentTool('signature');
+                        break;
+                    default:
+                        break;
+                }
             }
         };
 
