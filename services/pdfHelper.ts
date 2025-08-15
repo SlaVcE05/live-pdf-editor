@@ -1,4 +1,3 @@
-
 import { PDFDocument, PDFFont, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { EditableElement, PageInfo, TextElement, SignatureElement, SymbolElement } from '../types';
@@ -114,6 +113,8 @@ export const savePdf = async (
         const scaleY = pdfPageHeight / pageInfo.height;
 
         for (const element of pageElements) {
+            // In PDF-lib, Y-coordinates are calculated from the bottom of the page.
+            // We find the Y-coordinate of the element's top edge.
             const y_top_pdf = page.getHeight() - (element.y * scaleY);
 
             if (element.type === 'text') {
@@ -126,6 +127,7 @@ export const savePdf = async (
                 lines.forEach((line, lineIndex) => {
                      page.drawText(line, {
                         x: element.x * scaleX,
+                        // The y-coordinate for drawText is the baseline, so we adjust from the top.
                         y: y_top_pdf - fontSize - (lineIndex * lineHeight),
                         font,
                         size: fontSize,
@@ -138,6 +140,7 @@ export const savePdf = async (
                 const image = await pdfDoc.embedPng(imageBytes);
                 page.drawImage(image, {
                     x: element.x * scaleX,
+                    // The y-coordinate for drawImage is the bottom edge.
                     y: y_top_pdf - (element.height * scaleY),
                     width: element.width * scaleX,
                     height: element.height * scaleY,
@@ -147,26 +150,33 @@ export const savePdf = async (
                 if (symbolElement.symbolType === 'checkmark') {
                     // SVG path for a checkmark from a 24x24 viewBox
                     const checkmarkPath = 'M20 6L9 17l-5-5';
+                    // The stroke width must match the SVG icon definition for visual consistency.
+                    const borderWidth = 3; 
                     
                     const elWidth = element.width * scaleX;
                     const elHeight = element.height * scaleY;
                     const elX = element.x * scaleX;
-                    const elY = y_top_pdf - elHeight;
-
+                   
+                    // Scale the 24x24 viewbox to fit the element's box while preserving aspect ratio.
                     const scale = Math.min(elWidth / 24, elHeight / 24);
                     
-                    const scaledWidth = 24 * scale;
-                    const scaledHeight = 24 * scale;
+                    const scaledViewBoxWidth = 24 * scale;
+                    const scaledViewBoxHeight = 24 * scale;
 
-                    const offsetX = (elWidth - scaledWidth) / 2;
-                    const offsetY = (elHeight - scaledHeight) / 2;
+                    // Calculate offsets to center the scaled viewbox within the element's bounding box.
+                    const offsetX = (elWidth - scaledViewBoxWidth) / 2;
+                    const offsetY = (elHeight - scaledViewBoxHeight) / 2;
                     
+                    // The `drawSvgPath` function appears to use a top-left origin for its y-coordinate,
+                    // which is inconsistent with other drawing functions in pdf-lib. To correct for this,
+                    // we position the path relative to the element's top edge (`y_top_pdf`) and subtract
+                    // the vertical offset to ensure it is centered correctly.
                     page.drawSvgPath(checkmarkPath, {
                         x: elX + offsetX,
-                        y: elY + offsetY,
+                        y: y_top_pdf - offsetY,
                         scale: scale,
                         borderColor: rgb(0, 0, 0),
-                        borderWidth: 2,
+                        borderWidth: borderWidth,
                     });
                 }
             }
