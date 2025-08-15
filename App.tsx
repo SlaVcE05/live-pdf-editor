@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { EditableElement, PageInfo, ToolType, TextElement, SignatureElement } from './types';
+import { EditableElement, PageInfo, ToolType, TextElement, SignatureElement, SymbolElement } from './types';
 import { loadPdfPages, savePdf } from './services/pdfHelper';
 import { convertDocxToPdfBytes } from './services/docHelper';
 import FileUploader from './components/FileUploader';
@@ -131,6 +131,18 @@ const App: React.FC = () => {
                 pageIndex: currentPageIndex
             };
             newElement = textElement;
+        } else if (currentTool === 'symbol') {
+            const symbolElement: SymbolElement = {
+                id: nanoid(),
+                type: 'symbol',
+                x, y,
+                width: 24,
+                height: 24,
+                symbolType: 'checkmark',
+                color: '#000000',
+                pageIndex: currentPageIndex,
+            };
+            newElement = symbolElement;
         } else if (currentTool === 'signature' && signatureImage) {
             const signatureElement: SignatureElement = {
                 id: nanoid(),

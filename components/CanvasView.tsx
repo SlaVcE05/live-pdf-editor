@@ -1,6 +1,8 @@
 
+
 import React, { useEffect, useRef } from 'react';
-import { EditableElement, PageInfo, TextElement, ToolType } from '../types';
+import { EditableElement, PageInfo, TextElement, ToolType, SymbolElement } from '../types';
+import { CheckIcon } from './icons';
 
 const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica', isBold = false, isItalic = false) => {
     // This function is duplicated in App.tsx. For a real app, it would be in a shared utils file.
@@ -97,7 +99,7 @@ const CanvasView: React.FC<CanvasViewProps> = ({ page, elements, addElement, set
             return;
         }
 
-        if (currentTool === 'text' || currentTool === 'signature') {
+        if (currentTool === 'text' || currentTool === 'signature' || currentTool === 'symbol') {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -119,7 +121,7 @@ const CanvasView: React.FC<CanvasViewProps> = ({ page, elements, addElement, set
         <div 
           id="canvas-view"
           className="relative shadow-lg" 
-          style={{ width: page.width, height: page.height, cursor: (currentTool === 'text' || currentTool === 'signature') ? 'crosshair' : 'default' }}
+          style={{ width: page.width, height: page.height, cursor: (currentTool === 'text' || currentTool === 'signature' || currentTool === 'symbol') ? 'crosshair' : 'default' }}
           onClick={handleCanvasClick}
         >
             <img src={page.dataUrl} alt="PDF Page" className="w-full h-full select-none pointer-events-none" />
@@ -173,15 +175,20 @@ const CanvasView: React.FC<CanvasViewProps> = ({ page, elements, addElement, set
                                 overflowY: 'hidden',
                             }}
                         />
-                    ) : (
+                    ) : element.type === 'signature' ? (
                         <img 
                           src={element.imageData} 
                           alt="signature" 
                           className="w-full h-full"
                           onMouseDown={(e) => onMouseDownOnElement(e, element.id)}
                         />
+                    ) : ( // Symbol
+                        <CheckIcon 
+                            className="w-full h-full"
+                            style={{ color: (element as SymbolElement).color }}
+                        />
                     )}
-                    {element.type === 'signature' && selectedElementId === element.id && (
+                    {(element.type === 'signature' || element.type === 'symbol') && selectedElementId === element.id && (
                         <>
                             <ResizeHandle position="top-left" onMouseDown={(e) => handleResizeStart(e, element.id, 'top-left')} />
                             <ResizeHandle position="top-right" onMouseDown={(e) => handleResizeStart(e, element.id, 'top-right')} />

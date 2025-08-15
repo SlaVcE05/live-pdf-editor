@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { EditableElement, TextElement, ToolType } from '../types';
-import { PointerIcon, TextIcon, SignatureIcon, TrashIcon, UploadIcon, DownloadIcon, BoldIcon, ItalicIcon } from './icons';
+import { PointerIcon, TextIcon, SignatureIcon, TrashIcon, UploadIcon, DownloadIcon, BoldIcon, ItalicIcon, CheckIcon } from './icons';
 
 interface ToolbarProps {
     currentTool: ToolType;
@@ -44,9 +44,10 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
         }
     };
 
-    const ToolButton = ({ tool, icon, children }: { tool: ToolType; icon: React.ReactNode, children: React.ReactNode }) => (
+    const ToolButton = ({ tool, icon, children, title }: { tool: ToolType; icon: React.ReactNode; children: React.ReactNode, title?: string }) => (
         <button
             onClick={() => props.setCurrentTool(tool)}
+            title={title}
             className={`flex items-center gap-3 w-full p-3 rounded-lg text-left transition-colors ${props.currentTool === tool ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
         >
             {icon}
@@ -63,11 +64,13 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
             <div className="flex-1 flex flex-col gap-2">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Tools</h2>
                 <ToolButton tool="select" icon={<PointerIcon className="w-5 h-5" />}>Select</ToolButton>
-                <ToolButton tool="text" icon={<TextIcon className="w-5 h-5" />}>Add Text</ToolButton>
+                <ToolButton tool="text" icon={<TextIcon className="w-5 h-5" />} title="Shortcut: T">Add Text</ToolButton>
+                <ToolButton tool="symbol" icon={<CheckIcon className="w-5 h-5" />}>Add Checkmark</ToolButton>
                 
                 <div className="flex flex-col gap-2">
                      <button
                         onClick={handleSignatureAction}
+                        title="Shortcut: S"
                         className={`flex items-center gap-3 w-full p-3 rounded-lg text-left transition-colors ${props.currentTool === 'signature' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
                     >
                         {props.signatureImage ? <SignatureIcon className="w-5 h-5" /> : <UploadIcon className="w-5 h-5" />}

@@ -1,6 +1,7 @@
+
 import { PDFDocument, PDFFont, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import { EditableElement, PageInfo, TextElement, SignatureElement } from '../types';
+import { EditableElement, PageInfo, TextElement, SignatureElement, SymbolElement } from '../types';
 
 declare const pdfjsLib: any;
 
@@ -141,6 +142,33 @@ export const savePdf = async (
                     width: element.width * scaleX,
                     height: element.height * scaleY,
                 });
+            } else if (element.type === 'symbol') {
+                const symbolElement = element as SymbolElement;
+                if (symbolElement.symbolType === 'checkmark') {
+                    // SVG path for a checkmark from a 24x24 viewBox
+                    const checkmarkPath = 'M20 6L9 17l-5-5';
+                    
+                    const elWidth = element.width * scaleX;
+                    const elHeight = element.height * scaleY;
+                    const elX = element.x * scaleX;
+                    const elY = y_top_pdf - elHeight;
+
+                    const scale = Math.min(elWidth / 24, elHeight / 24);
+                    
+                    const scaledWidth = 24 * scale;
+                    const scaledHeight = 24 * scale;
+
+                    const offsetX = (elWidth - scaledWidth) / 2;
+                    const offsetY = (elHeight - scaledHeight) / 2;
+                    
+                    page.drawSvgPath(checkmarkPath, {
+                        x: elX + offsetX,
+                        y: elY + offsetY,
+                        scale: scale,
+                        borderColor: rgb(0, 0, 0),
+                        borderWidth: 2,
+                    });
+                }
             }
         }
     }

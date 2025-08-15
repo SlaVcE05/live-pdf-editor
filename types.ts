@@ -1,9 +1,9 @@
 
-export type ToolType = 'select' | 'text' | 'signature';
+export type ToolType = 'select' | 'text' | 'signature' | 'symbol';
 
 export interface BaseElement {
     id: string;
-    type: 'text' | 'signature';
+    type: 'text' | 'signature' | 'symbol';
     x: number;
     y: number;
     width: number;
@@ -25,7 +25,13 @@ export interface SignatureElement extends BaseElement {
     imageData: string; // base64 data URL
 }
 
-export type EditableElement = TextElement | SignatureElement;
+export interface SymbolElement extends BaseElement {
+    type: 'symbol';
+    symbolType: 'checkmark';
+    color: string;
+}
+
+export type EditableElement = TextElement | SignatureElement | SymbolElement;
 
 export interface PageInfo {
     dataUrl: string;
