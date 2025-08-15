@@ -297,9 +297,11 @@ const App: React.FC = () => {
             } else {
                 switch (e.key.toLowerCase()) {
                     case 't':
+                    case 'т':
                         setCurrentTool('text');
                         break;
                     case 's':
+                    case 'с':
                         setCurrentTool('signature');
                         break;
                     default:
