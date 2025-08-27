@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { EditableElement, TextElement, ToolType } from '../types';
 import { PointerIcon, TextIcon, SignatureIcon, TrashIcon, UploadIcon, DownloadIcon, BoldIcon, ItalicIcon, CheckIcon } from './icons';
+import { AppInfo } from '../AppInfo'
 
 interface ToolbarProps {
     currentTool: ToolType;
@@ -58,7 +59,7 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
     return (
         <aside className="w-72 bg-white h-full p-4 flex flex-col shadow-lg">
             <div className="flex items-center gap-2 mb-6">
-                 <h1 className="text-xl font-bold text-gray-800">Editor</h1>
+                 <h1 className="text-xl font-bold text-gray-800">Editor V{AppInfo.version}</h1>
             </div>
 
             <div className="flex-1 flex flex-col gap-2">

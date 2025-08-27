@@ -1,6 +1,7 @@
 
 import React, { useRef } from 'react';
 import { UploadCloudIcon } from './icons';
+import { AppInfo } from "../AppInfo";
 
 interface FileUploaderProps {
     onFileSelect: (file: File) => void;
@@ -53,7 +54,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isLoading }) 
             <div className="w-full max-w-lg p-8 space-y-8 bg-white rounded-2xl shadow-lg text-center">
                 <h1 className="text-3xl font-bold text-gray-800">Live Document Editor</h1>
                 <p className="text-gray-500">Upload a PDF or Word (.docx) document to start editing.</p>
-                
+                <p className="text-gray-500">V{AppInfo.version}</p>
                 <div 
                     className="flex flex-col items-center justify-center w-full p-10 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
                     onDragOver={handleDragOver}
