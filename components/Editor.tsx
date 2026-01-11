@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { EditableElement, PageInfo, ToolType } from '../types';
 import Toolbar from './Toolbar';
 import CanvasView from './CanvasView';
@@ -25,10 +26,27 @@ interface EditorProps {
 }
 
 const Editor: React.FC<EditorProps> = (props) => {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
     return (
-        <div className="flex h-screen w-screen bg-gray-200 font-sans">
-            <Toolbar {...props} />
-            <main className="flex-1 flex flex-col items-center justify-start p-4 overflow-auto">
+        <div className="flex h-screen w-screen bg-gray-200 font-sans overflow-hidden">
+            <Toolbar 
+                {...props} 
+                isOpen={isSidebarOpen} 
+                setIsOpen={setIsSidebarOpen} 
+            />
+            
+            <main className="flex-1 flex flex-col items-center justify-start p-4 overflow-auto relative">
+                {!isSidebarOpen && (
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="fixed left-4 top-4 z-50 p-2 bg-white rounded-full shadow-lg border border-gray-200 hover:bg-gray-50 transition-all"
+                        title="Open Toolbar"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+                    </button>
+                )}
+                
                 <CanvasView
                     page={props.pages[props.currentPageIndex]}
                     elements={props.elements.filter(el => el.pageIndex === props.currentPageIndex)}
@@ -40,7 +58,8 @@ const Editor: React.FC<EditorProps> = (props) => {
                     currentTool={props.currentTool}
                     handleResizeStart={props.handleResizeStart}
                 />
-                 <div className="mt-4 flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md">
+                
+                <div className="mt-4 mb-8 flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md shrink-0">
                     <button
                         onClick={() => props.setCurrentPageIndex(Math.max(0, props.currentPageIndex - 1))}
                         disabled={props.currentPageIndex === 0}
@@ -48,7 +67,7 @@ const Editor: React.FC<EditorProps> = (props) => {
                     >
                         Prev
                     </button>
-                    <span>
+                    <span className="text-sm font-medium">
                         Page {props.currentPageIndex + 1} of {props.pages.length}
                     </span>
                     <button
