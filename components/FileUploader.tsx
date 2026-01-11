@@ -50,7 +50,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isLoading }) 
     };
 
     return (
+        
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
+            <amp-ad width="100vw" height="320"
+     type="adsense"
+     data-ad-client="ca-pub-7044114851093096"
+     data-ad-slot="9345744575"
+     data-auto-format="rspv"
+     data-full-width="">
+  <div overflow=""></div>
+</amp-ad>
             <div className="w-full max-w-lg p-8 space-y-8 bg-white rounded-2xl shadow-lg text-center">
                 <h1 className="text-3xl font-bold text-gray-800">Live Document Editor</h1>
                 <p className="text-gray-500">Upload a PDF or Word (.docx) document to start editing.</p>
