@@ -8,7 +8,6 @@ import Editor from './components/Editor';
 import { nanoid } from 'nanoid';
 
 const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica', isBold = false, isItalic = false) => {
-    // This function is duplicated in CanvasView.tsx. For a real app, it would be in a shared utils file.
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (context) {
@@ -17,7 +16,6 @@ const measureTextWidth = (text: string, fontSize: number, font = 'Helvetica', is
         context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${font}`;
         return context.measureText(text).width;
     }
-    // Fallback for environments where canvas is not available.
     const boldMultiplier = isBold ? 1.15 : 1;
     return text.length * fontSize * 0.6 * boldMultiplier;
 };
@@ -35,7 +33,6 @@ const App: React.FC = () => {
 
     const [draggingElement, setDraggingElement] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
     const [resizingElement, setResizingElement] = useState<{ id: string; corner: string; initialX: number; initialY: number; initialWidth: number; initialHeight: number; elementX: number; elementY: number; } | null>(null);
-
 
     const handleFileChange = (file: File) => {
         resetState();
@@ -74,19 +71,12 @@ const App: React.FC = () => {
                     setPages(loadedPages);
                 } catch (error) {
                     console.error("Failed to load document:", error);
-                    alert("Error: Could not load the file. It might be corrupted or in an unsupported format.");
+                    alert("Error: Could not load the file.");
                     resetState();
                 } finally {
                     setIsLoading(false);
                 }
-            } else {
-                alert("Could not read the selected file.");
-                resetState();
             }
-        };
-        reader.onerror = () => {
-            alert("An error occurred while reading the file.");
-            resetState();
         };
         reader.readAsArrayBuffer(file);
     };
@@ -111,28 +101,22 @@ const App: React.FC = () => {
         if (currentTool === 'text') {
             const defaultText = 'New Text';
             const fontSize = 16;
-            const fontFamily = 'Helvetica';
-            const isBold = false;
-            const isItalic = false;
-            const initialWidth = measureTextWidth(defaultText, fontSize, fontFamily, isBold, isItalic) + 20;
-
             const textElement: TextElement = {
                 id: nanoid(),
                 type: 'text',
-                x,
-                y,
-                width: initialWidth,
+                x, y,
+                width: measureTextWidth(defaultText, fontSize) + 20,
                 height: 24,
                 text: defaultText,
                 fontSize: fontSize,
-                fontFamily: fontFamily,
-                isBold: isBold,
-                isItalic: isItalic,
+                fontFamily: 'Helvetica',
+                isBold: false,
+                isItalic: false,
                 pageIndex: currentPageIndex
             };
             newElement = textElement;
         } else if (currentTool === 'symbol') {
-            const symbolElement: SymbolElement = {
+            newElement = {
                 id: nanoid(),
                 type: 'symbol',
                 x, y,
@@ -142,23 +126,20 @@ const App: React.FC = () => {
                 color: '#000000',
                 pageIndex: currentPageIndex,
             };
-            newElement = symbolElement;
         } else if (currentTool === 'signature' && signatureImage) {
-            const signatureElement: SignatureElement = {
+            newElement = {
                 id: nanoid(),
                 type: 'signature',
-                x,
-                y,
+                x, y,
                 width: 150,
                 height: 75,
                 imageData: signatureImage,
                 pageIndex: currentPageIndex
             };
-            newElement = signatureElement;
         }
 
         if (newElement) {
-            setElements(prev => [...prev, newElement]);
+            setElements(prev => [...prev, newElement!]);
             setSelectedElementId(newElement.id);
             setCurrentTool('select');
         }
@@ -176,17 +157,14 @@ const App: React.FC = () => {
         setIsLoading(true);
         try {
             const pdfBytes = await savePdf(pdfOriginalBytes, elements, pages);
-            
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `edited_${documentFile?.name.replace(/\.\w+$/, '.pdf') || 'document.pdf'}`;
-            document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
         } catch (error) {
-            console.error("Failed to export PDF:", error);
-            alert("An error occurred while exporting the PDF.");
+            console.error(error);
+            alert("Export failed.");
         } finally {
             setIsLoading(false);
         }
@@ -197,11 +175,18 @@ const App: React.FC = () => {
         setSelectedElementId(id);
         const element = elements.find(el => el.id === id);
         if (element && currentTool === 'select') {
-            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const canvasView = document.getElementById('canvas-view');
+            if (!canvasView) return;
+            const rect = canvasView.getBoundingClientRect();
+            // Get scale factor from computed style
+            const style = window.getComputedStyle(canvasView);
+            const matrix = new DOMMatrixReadOnly(style.transform);
+            const scale = matrix.a;
+
             setDraggingElement({
                 id,
-                offsetX: e.clientX - rect.left,
-                offsetY: e.clientY - rect.top,
+                offsetX: (e.clientX - rect.left) / scale - element.x,
+                offsetY: (e.clientY - rect.top) / scale - element.y,
             });
         }
     };
@@ -210,10 +195,8 @@ const App: React.FC = () => {
         e.stopPropagation();
         const element = elements.find(el => el.id === id);
         if (!element) return;
-        
         setResizingElement({
-            id,
-            corner,
+            id, corner,
             initialX: e.clientX,
             initialY: e.clientY,
             initialWidth: element.width,
@@ -224,34 +207,34 @@ const App: React.FC = () => {
     };
 
     const handleMouseMove = useCallback((e: MouseEvent) => {
-        if (draggingElement) {
-            const canvasView = document.getElementById('canvas-view');
-            if (!canvasView) return;
-            const parentRect = canvasView.getBoundingClientRect();
-            
-            const newX = e.clientX - parentRect.left - draggingElement.offsetX;
-            const newY = e.clientY - parentRect.top - draggingElement.offsetY;
+        const canvasView = document.getElementById('canvas-view');
+        if (!canvasView) return;
+        const parentRect = canvasView.getBoundingClientRect();
+        const style = window.getComputedStyle(canvasView);
+        const matrix = new DOMMatrixReadOnly(style.transform);
+        const scale = matrix.a;
 
+        if (draggingElement) {
+            const newX = (e.clientX - parentRect.left) / scale - draggingElement.offsetX;
+            const newY = (e.clientY - parentRect.top) / scale - draggingElement.offsetY;
             handleElementUpdate(draggingElement.id, { x: newX, y: newY });
-            return; // Prevent resizing while dragging
+            return;
         }
 
         if (resizingElement) {
-            const dx = e.clientX - resizingElement.initialX;
-
-            let newWidth;
+            const dx = (e.clientX - resizingElement.initialX) / scale;
+            let newWidth = resizingElement.initialWidth;
             let newX = resizingElement.elementX;
 
             if (resizingElement.corner.includes('right')) {
                 newWidth = resizingElement.initialWidth + dx;
-            } else { // left
+            } else {
                 newWidth = resizingElement.initialWidth - dx;
                 newX = resizingElement.elementX + dx;
             }
 
             const aspectRatio = resizingElement.initialWidth / resizingElement.initialHeight;
             const newHeight = newWidth / aspectRatio;
-
             let newY = resizingElement.elementY;
             if (resizingElement.corner.includes('top')) {
                 newY = resizingElement.elementY + (resizingElement.initialHeight - newHeight);
@@ -260,8 +243,7 @@ const App: React.FC = () => {
             handleElementUpdate(resizingElement.id, {
                 width: Math.max(20, newWidth),
                 height: Math.max(20, newHeight),
-                x: newX,
-                y: newY,
+                x: newX, y: newY,
             });
         }
     }, [draggingElement, resizingElement, handleElementUpdate]);
@@ -272,8 +254,7 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const hasInteraction = draggingElement || resizingElement;
-        if (hasInteraction) {
+        if (draggingElement || resizingElement) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }
@@ -285,14 +266,11 @@ const App: React.FC = () => {
     
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Do not trigger if an input or textarea is focused.
             const target = e.target as HTMLElement;
-            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-                return;
-            }
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
 
             if (selectedElementId && (e.key === 'Delete' || e.key === 'Backspace')) {
-                e.preventDefault(); // Prevent browser back navigation on backspace
+                e.preventDefault();
                 deleteSelectedElement();
             } else {
                 switch (e.key.toLowerCase()) {
@@ -317,16 +295,14 @@ const App: React.FC = () => {
         };
     }, [selectedElementId, deleteSelectedElement]);
 
-    if (!documentFile) {
-        return <FileUploader onFileSelect={handleFileChange} isLoading={isLoading} />;
-    }
+    if (!documentFile) return <FileUploader onFileSelect={handleFileChange} isLoading={isLoading} />;
 
     if (isLoading || pages.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="flex flex-col items-center gap-4">
                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                     <p className="text-gray-600">Processing your document...</p>
+                     <p className="text-gray-600 font-medium">Preparing your document...</p>
                 </div>
             </div>
         );

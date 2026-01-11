@@ -76,6 +76,7 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
 
                 <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 px-1">Tools</h2>
+                    {/* Fixed missing children props for ToolButton components */}
                     <ToolButton tool="select" icon={<PointerIcon className="w-5 h-5" />}>Select</ToolButton>
                     <ToolButton tool="text" icon={<TextIcon className="w-5 h-5" />} title="Shortcut: T">Add Text</ToolButton>
                     <ToolButton tool="symbol" icon={<CheckIcon className="w-5 h-5" />}>Add Checkmark</ToolButton>
