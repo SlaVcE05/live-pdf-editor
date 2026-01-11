@@ -287,12 +287,8 @@ const App: React.FC = () => {
                 }
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedElementId, deleteSelectedElement]);
 
     if (!documentFile) return <FileUploader onFileSelect={handleFileChange} isLoading={isLoading} />;
